@@ -20,12 +20,13 @@ double minAmp = 0.5;
 int longAvgLength = 400;
 int shortAvgLength = 20;
 int breaths = 0;
-double rate = 10;
+float rate = 10;
 int diff5 = 0;
 
 HashMap<Integer, ArrayList<Double>> avgDistMap = new HashMap();
 HashMap<Integer, ArrayList<Integer>> breathHistoryMap = new HashMap();
 HashMap<Integer, Boolean> inMap = new HashMap();
+HashMap<Integer, Float> rateMap = new HashMap();
 
 
 // Used to avoid extra calculations
@@ -47,6 +48,13 @@ void setup() {
   table.addColumn("distance1");
   table.addColumn("distance2");
   table.addColumn("distance3");
+}
+
+void onLostUser(SimpleOpenNI curContext, int userId){
+   avgDistMap.remove(userId);
+   breathHistoryMap.remove(userId);
+   inMap.remove(userId);
+   rateMap.remove(userId);
 }
 
 void draw() {
@@ -83,8 +91,6 @@ void draw() {
 
     double avg = avgDist(breathBox);
     
-    text(userId, com2d.x, com2d.y + 40);
-
     ArrayList<Double> longAvg = new ArrayList();
     ArrayList<Integer> breathHistory = new ArrayList();
     ArrayList<Double> shortAvg = new ArrayList();
@@ -96,6 +102,7 @@ void draw() {
       avgDistMap.put(userId, longAvg);
       breathHistoryMap.put(userId, breathHistory);
       inMap.put(userId, false);
+      rateMap.put(userId, -1.0);
     } else {
       longAvg = avgDistMap.get(userId);
       breathHistory = breathHistoryMap.get(userId);
@@ -113,9 +120,8 @@ void draw() {
         breathHistory.add(now);
         if (breathHistory.size() > 5) {
           breathHistory.remove(0);
-          rate = 5 * 60000 / (breathHistory.get(4) - breathHistory.get(0));
-          println("Rate " + userId + ": " + rate + " per minute");
-          text((int) rate, com2d.x, com2d.y);
+          rate = 5.0 * 60000 / (breathHistory.get(4) - breathHistory.get(0));
+          rateMap.put(userId, rate);
         }
         breaths ++;
         inMap.put(userId, true);
@@ -141,6 +147,15 @@ void draw() {
     if (now > 360E3) {
       saveTable(table, "breathing.csv");
       exit();
+    }
+    
+    stroke(255,255,255);
+    text(userId, com2d.x + 5, com2d.y + chestWidth/2 + 20);
+    
+    if (rateMap.get(userId) != -1.0){
+      text("BR: " + rateMap.get(userId), com2d.x + 5, com2d.y + chestWidth/2 + 40);
+    } else {
+      text("Calculating", com2d.x + 5, com2d.y + chestWidth/2 + 40);
     }
   }
 }
