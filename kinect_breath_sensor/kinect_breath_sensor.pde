@@ -59,17 +59,25 @@ void draw() {
   kinect.getUsers(userList);
   
   for (int i = 0; i < userList.size(); i ++) {
-    int userId = userList.get(0); 
+    int userId = userList.get(i); 
+    
+    PVector min = new PVector();
+    PVector max = new PVector();
+    
+    kinect.getBoundingBox(userId, min, max);
+    
+    float chestWidth = (max.x - min.x) * 0.75;
     
     // Get centre of mass
     kinect.getCoM(userId, com);
     kinect.convertRealWorldToProjective(com,com2d);
     
     noFill();
-    rect(com2d.x - side, com2d.y - above, 2*side, above + below);
+    stroke(255,255,255);
+    rect(com2d.x - chestWidth/2, com2d.y - chestWidth/2, chestWidth, chestWidth);
     
     // Get box around centre of mass
-    int[] breathBox = getBreathBox(depth, (int)com2d.x, (int)com2d.y);
+    int[] breathBox = getBreathBox(depth, (int)com2d.x, (int)com2d.y, (int)chestWidth);
     
     double avg = avgDist(breathBox);
     int now = millis();
@@ -138,12 +146,14 @@ double getAvg(ArrayList<Double> data){
   return sum/data.size();
 }
 
-int[] getBreathBox(int[] depth, int x, int y){
+int[] getBreathBox(int[] depth, int x, int y, int chestWidth){
   int[] trimmed = new int[depth.length];
+  
+  int space = chestWidth / 2;
 
   for (int i = 0; i < width; i += 1) {
     for (int j = 0; j < height; j += 1) {
-      if(i > x - side && i <= x + side && j > y - above && j <= y + below){
+      if(i > x - space && i <= x + space && j > y - space && j <= y + space){
         trimmed[j*width + i] = depth[j*width + i];
       } else {
         trimmed[j*width + i] = 2047;
