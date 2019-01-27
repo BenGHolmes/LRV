@@ -82,10 +82,6 @@ void draw() {
     kinect.getCoM(userId, com);
     kinect.convertRealWorldToProjective(com, com2d);
 
-    noFill();
-    stroke(255, 255, 255);
-    rect(com2d.x - chestWidth/2, com2d.y - chestWidth/2, chestWidth, chestWidth);
-
     // Get box around centre of mass
     int[] breathBox = getBreathBox(depth, (int)com2d.x, (int)com2d.y, (int)chestWidth);
 
@@ -118,9 +114,9 @@ void draw() {
     if (longAvg.size() == longAvgLength) {
       if (getAvg(shortAvg) > (getAvg(longAvg) + minAmp) && !inMap.get(userId)) {
         breathHistory.add(now);
-        if (breathHistory.size() > 5) {
+        if (breathHistory.size() > 3) {
           breathHistory.remove(0);
-          rate = 5.0 * 60000 / (breathHistory.get(4) - breathHistory.get(0));
+          rate = 3.0 * 60000 / (breathHistory.get(2) - breathHistory.get(0));
           rateMap.put(userId, rate);
         }
         breaths ++;
@@ -144,18 +140,44 @@ void draw() {
         break;
     }
 
-    if (now > 360E3) {
-      saveTable(table, "breathing.csv");
-      exit();
+    //if (now > 360E3) {
+    //  saveTable(table, "breathing.csv");
+    //  exit();
+    //}
+    
+    int status = getStat(rateMap.get(userId), breathHistory);
+    
+    textSize(20);    
+   
+    switch(status){        
+      case 1:
+        fill(0,158,0);
+        text("NORMAL BR", com2d.x - chestWidth/2, com2d.y - chestWidth/2 + 20);
+        break;
+      case 2:
+        fill(204, 0,0);
+        text("LOW BR", com2d.x - chestWidth/2, com2d.y - chestWidth/2 + 20);
+        break;
+      case 3:
+        fill(204, 0,0);
+        text("HIGH BR", com2d.x - chestWidth/2, com2d.y - chestWidth/2 + 20);
+        break;
+      case 4:
+        fill(204, 0,0);
+        text("NO BR", com2d.x - chestWidth/2, com2d.y - chestWidth/2 + 20);
+        break;
     }
     
+    fill(255,255,255);
     stroke(255,255,255);
-    text(userId, com2d.x + 5, com2d.y + chestWidth/2 + 20);
+    noFill();
+    strokeWeight(4);
+    rect(com2d.x - chestWidth/2, com2d.y - chestWidth/2, chestWidth, chestWidth);
     
     if (rateMap.get(userId) != -1.0){
-      text("BR: " + rateMap.get(userId), com2d.x + 5, com2d.y + chestWidth/2 + 40);
+      text("BR: " + rateMap.get(userId), com2d.x -chestWidth/2, com2d.y + chestWidth/2 + 20);
     } else {
-      text("Calculating", com2d.x + 5, com2d.y + chestWidth/2 + 40);
+      text("Calculating BR", com2d.x - chestWidth/2, com2d.y + chestWidth/2 + 20);
     }
   }
 }
@@ -197,4 +219,15 @@ int[] getBreathBox(int[] depth, int x, int y, int chestWidth) {
   }
 
   return trimmed;
+}
+
+int getStat(double breathRate, ArrayList<Integer> breathTimes){
+  if (breathRate == -1) return 0;
+  
+  if(breathRate < 6) return 2;
+  if (breathRate > 25) return 3;
+  if(breathTimes.get(breathTimes.size() - 1) - breathTimes.get(0) > 40E3) return 4;
+  
+  return 1;
+  
 }
