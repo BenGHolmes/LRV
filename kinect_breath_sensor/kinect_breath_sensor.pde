@@ -9,9 +9,6 @@ PVector com2d = new PVector();
 Table table;
 
 // Rectangle filters
-int above = 75;
-int below = 25;
-int side = 25;
 int width = 640;
 int height = 480;
 
@@ -25,11 +22,10 @@ int shortAvgLength = 20;
 int breaths = 0;
 double rate = 10;
 int diff5 = 0;
-boolean in = false;
-boolean warned = false;
 
 HashMap<Integer, ArrayList<Double>> avgDistMap = new HashMap();
-HashMap<Integer, ArrayList<Integer>> lastFiveMap = new HashMap();
+HashMap<Integer, ArrayList<Integer>> breathHistoryMap = new HashMap();
+HashMap<Integer, Boolean> inMap = new HashMap();
 
 
 // Used to avoid extra calculations
@@ -89,19 +85,20 @@ void draw() {
     
     text(userId, com2d.x, com2d.y + 40);
 
-    ArrayList<Double> longAvg;
-    ArrayList<Integer> lastFive;
+    ArrayList<Double> longAvg = new ArrayList();
+    ArrayList<Integer> breathHistory = new ArrayList();
     ArrayList<Double> shortAvg = new ArrayList();
 
     if (!avgDistMap.keySet().contains(userId)) {
       longAvg = new ArrayList();
-      lastFive = new ArrayList();
+      breathHistory = new ArrayList();
 
       avgDistMap.put(userId, longAvg);
-      lastFiveMap.put(userId, lastFive);
+      breathHistoryMap.put(userId, breathHistory);
+      inMap.put(userId, false);
     } else {
       longAvg = avgDistMap.get(userId);
-      lastFive = lastFiveMap.get(userId);
+      breathHistory = breathHistoryMap.get(userId);
     }
 
     longAvg.add(avg);
@@ -112,20 +109,20 @@ void draw() {
 
     // Counting
     if (longAvg.size() == longAvgLength) {
-      if (getAvg(shortAvg) > (getAvg(longAvg) + minAmp) && !in) {
-        lastFive.add(now);
-        if (lastFive.size() > 5) {
-          lastFive.remove(0);
-          rate = 5.0 * 60000 / (lastFive.get(4) - lastFive.get(0));
-          println("Breathing rate: " + rate + " per minute");
+      if (getAvg(shortAvg) > (getAvg(longAvg) + minAmp) && !inMap.get(userId)) {
+        breathHistory.add(now);
+        if (breathHistory.size() > 5) {
+          breathHistory.remove(0);
+          rate = 5 * 60000 / (breathHistory.get(4) - breathHistory.get(0));
+          println("Rate " + userId + ": " + rate + " per minute");
           text((int) rate, com2d.x, com2d.y);
         }
         breaths ++;
-        in = true;
+        inMap.put(userId, true);
       }
 
-      if (getAvg(shortAvg) < getAvg(longAvg) - minAmp && in) {
-        in = false;
+      if (getAvg(shortAvg) < getAvg(longAvg) - minAmp && inMap.get(userId)) {
+        inMap.put(userId, false);
       }
     }
     
@@ -141,7 +138,7 @@ void draw() {
         break;
     }
 
-    if (now > 120E3) {
+    if (now > 360E3) {
       saveTable(table, "breathing.csv");
       exit();
     }
