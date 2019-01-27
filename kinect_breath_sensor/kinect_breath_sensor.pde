@@ -28,9 +28,9 @@ int diff5 = 0;
 boolean in = false;
 boolean warned = false;
 
-ArrayList<Double> longAvg = new ArrayList();
-ArrayList<Double> shortAvg = new ArrayList();
-ArrayList<Integer> breathAvg = new ArrayList();
+HashMap<Integer, ArrayList<Double>> avgDistMap = new HashMap();
+HashMap<Integer, ArrayList<Integer>> lastFiveMap = new HashMap();
+
 
 // Used to avoid extra calculations
 float[] depthLookUp = new float[2048];
@@ -45,115 +45,138 @@ void setup() {
   fill(255, 0, 0);
   //size(kinect.depthWidth()+kinect.irWidth(), kinect.depthHeight());
   kinect.setMirror(false);
-  
+
   table = new Table();
   table.addColumn("timestamp");
-  table.addColumn("distance");
+  table.addColumn("distance1");
+  table.addColumn("distance2");
+  table.addColumn("distance3");
 }
 
 void draw() {
   kinect.update();
-  image(kinect.userImage(),0,0); // Black and white point cloud'
+  image(kinect.userImage(), 0, 0); // Black and white point cloud'
   int[] depth = kinect.depthMap();
   IntVector userList = new IntVector();
   kinect.getUsers(userList);
   
+  int now = millis();
+  TableRow newRow = table.addRow();
+  newRow.setInt("timestamp", now);
+
   for (int i = 0; i < userList.size(); i ++) {
     int userId = userList.get(i); 
-    
+
     PVector min = new PVector();
     PVector max = new PVector();
-    
+
     kinect.getBoundingBox(userId, min, max);
-    
+
     float chestWidth = (max.x - min.x) * 0.75;
-    
+
     // Get centre of mass
     kinect.getCoM(userId, com);
-    kinect.convertRealWorldToProjective(com,com2d);
-    
+    kinect.convertRealWorldToProjective(com, com2d);
+
     noFill();
-    stroke(255,255,255);
+    stroke(255, 255, 255);
     rect(com2d.x - chestWidth/2, com2d.y - chestWidth/2, chestWidth, chestWidth);
-    
+
     // Get box around centre of mass
     int[] breathBox = getBreathBox(depth, (int)com2d.x, (int)com2d.y, (int)chestWidth);
-    
+
     double avg = avgDist(breathBox);
-    int now = millis();
     
-    TableRow newRow = table.addRow();
-    newRow.setInt("timestamp", now);
-    newRow.setDouble("distance", avg);
-    
+    text(userId, com2d.x, com2d.y + 40);
+
+    ArrayList<Double> longAvg;
+    ArrayList<Integer> lastFive;
+    ArrayList<Double> shortAvg = new ArrayList();
+
+    if (!avgDistMap.keySet().contains(userId)) {
+      longAvg = new ArrayList();
+      lastFive = new ArrayList();
+
+      avgDistMap.put(userId, longAvg);
+      lastFiveMap.put(userId, lastFive);
+    } else {
+      longAvg = avgDistMap.get(userId);
+      lastFive = lastFiveMap.get(userId);
+    }
+
     longAvg.add(avg);
-    shortAvg.add(avg);
-    
-    if(longAvg.size() > longAvgLength) longAvg.remove(0);
-    if(shortAvg.size() > shortAvgLength) shortAvg.remove(0);
-    
+    if (longAvg.size() > longAvgLength) {
+      longAvg.remove(0);
+      shortAvg = new ArrayList(longAvg.subList(longAvg.size() - 20, longAvg.size()));
+    }
+
     // Counting
-    if(longAvg.size() == longAvgLength){
-      if(getAvg(shortAvg) > (getAvg(longAvg) + minAmp) && !in){
-        breathAvg.add(now);
-        if(breathAvg.size() > 5){
-          breathAvg.remove(0);
-          rate = 5.0 * 60000 / (breathAvg.get(4) - breathAvg.get(0));
+    if (longAvg.size() == longAvgLength) {
+      if (getAvg(shortAvg) > (getAvg(longAvg) + minAmp) && !in) {
+        lastFive.add(now);
+        if (lastFive.size() > 5) {
+          lastFive.remove(0);
+          rate = 5.0 * 60000 / (lastFive.get(4) - lastFive.get(0));
           println("Breathing rate: " + rate + " per minute");
+          text((int) rate, com2d.x, com2d.y);
         }
         breaths ++;
         in = true;
       }
-      
-      if(getAvg(shortAvg) < getAvg(longAvg) - minAmp && in){
+
+      if (getAvg(shortAvg) < getAvg(longAvg) - minAmp && in) {
         in = false;
       }
     }
     
-    if(now > 120E3){
+    switch(userId){
+      case 1:
+        newRow.setDouble("distance1", avg);
+        break;
+      case 2:
+        newRow.setDouble("distance2", avg);
+        break;
+      case 3:
+        newRow.setDouble("distance3", avg);
+        break;
+    }
+
+    if (now > 120E3) {
       saveTable(table, "breathing.csv");
       exit();
     }
-    
-    if(breathAvg.size() > 0) diff5 = now - breathAvg.get(0);
-    
-    // Warnings
-    if(rate < 8){ if(!warned) println("WARNING: BREATH RATE LOW");}
-    else if(rate > 20){ if (!warned) println("WARNING: BREATH RATE HIGH");}
-    else if(diff5 > 40){ if (!warned) println("WARNING: NO BREATHING DETECTED");}
-    else warned = false;
   }
 }
 
-double avgDist(int[] data){
-   int sum = 0;
-   int count = 0;
-   
-   for(int i = 0; i < data.length; i++){
-     if(data[i] != 2047){
-       sum += data[i];
-       count++;
-     }
-   }
-   
-   return (double) sum / count;
+double avgDist(int[] data) {
+  int sum = 0;
+  int count = 0;
+
+  for (int i = 0; i < data.length; i++) {
+    if (data[i] != 2047) {
+      sum += data[i];
+      count++;
+    }
+  }
+
+  return (double) sum / count;
 }
 
-double getAvg(ArrayList<Double> data){
+double getAvg(ArrayList<Double> data) {
   double sum = 0;
-  for(int i = 0; i < data.size(); i++) sum += data.get(i);
-  
+  for (int i = 0; i < data.size(); i++) sum += data.get(i);
+
   return sum/data.size();
 }
 
-int[] getBreathBox(int[] depth, int x, int y, int chestWidth){
+int[] getBreathBox(int[] depth, int x, int y, int chestWidth) {
   int[] trimmed = new int[depth.length];
-  
+
   int space = chestWidth / 2;
 
   for (int i = 0; i < width; i += 1) {
     for (int j = 0; j < height; j += 1) {
-      if(i > x - space && i <= x + space && j > y - space && j <= y + space){
+      if (i > x - space && i <= x + space && j > y - space && j <= y + space) {
         trimmed[j*width + i] = depth[j*width + i];
       } else {
         trimmed[j*width + i] = 2047;
