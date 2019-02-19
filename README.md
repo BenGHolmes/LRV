@@ -4,7 +4,7 @@
 
 ![alt text](Long_Range_Vitals_1.png?raw=true "Long_Range_Vitals_1")
 
-![alt text](Long_Range_Vitals_2.png?raw=true "Long_Range_Vitals_2")
+![alt text](Long_Range_Vitals_3.png?raw=true "Long_Range_Vitals_2")
 
 
 ## Inspiration
