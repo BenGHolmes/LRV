@@ -6,6 +6,9 @@
 
 ![alt text](Long_Range_Vitals_3.png?raw=true "Long_Range_Vitals_2")
 
+## Full Video Demonstration
+
+https://www.youtube.com/watch?v=qKnw_AMKno4
 
 ## Inspiration
 Research from Press Ganey Associates found that the average ER wait time in 2009 was 6 hours, which is plenty of time for a patient's condition to worsen significantly before they are seen. Despite best efforts, it is difficult for staff to monitor all patients waiting be seen, which puts them at risk.
